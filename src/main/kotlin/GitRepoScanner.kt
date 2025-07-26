@@ -4,7 +4,7 @@ import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.api.Status
 import org.eclipse.jgit.lib.Repository
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder
-//import org.eclipse.jgit.revwalk.RevWalk // Added import for RevWalk
+import org.eclipse.jgit.transport.RemoteConfig
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.IOException
@@ -102,107 +102,69 @@ object GitRepoScanner {
             // Print the status details
             println("  Current Branch: ${repository.branch}")
 
-            // Untracked files and folders
-            val untrackedFiles = status.untracked.size
-            val untrackedFolders = status.untrackedFolders.size
-            if (untrackedFiles > 0 || untrackedFolders > 0) {
-                println("  Untracked: $untrackedFiles files, $untrackedFolders folders")
-                status.untracked.forEach { println("    - Untracked: $it") }
-                status.untrackedFolders.forEach { println("    - Untracked Folder: $it") }
-            } else {
-                println("  Untracked: 0")
-            }
-
-            // Unstaged changes (modified, missing/deleted)
-            val modifiedFiles = status.modified.size
-            val missingFiles = status.missing.size
-            if (modifiedFiles > 0 || missingFiles > 0) {
-                println("  Unstaged Changes:")
-                println("    Modified: $modifiedFiles")
-                status.modified.forEach { println("      - Modified: $it") }
-                println("    Deleted (Missing): $missingFiles")
-                status.missing.forEach { println("      - Deleted: $it") }
-            } else {
-                println("  Unstaged Changes: None")
-            }
-
-            // Staged changes (added, changed, removed)
-            val addedFiles = status.added.size
-            val changedFiles = status.changed.size // Modified files that have been staged
-            val removedFiles = status.removed.size // Deleted files that have been staged
-            if (addedFiles > 0 || changedFiles > 0 || removedFiles > 0) {
-                println("  Staged Changes:")
-                println("    Added: $addedFiles")
-                status.added.forEach { println("      - Added: $it") }
-                println("    Modified (Staged): $changedFiles")
-                status.changed.forEach { println("      - Modified (Staged): $it") }
-                println("    Deleted (Staged): $removedFiles")
-                status.removed.forEach { println("      - Deleted (Staged): $it") }
-            } else {
-                println("  Staged Changes: None")
-            }
-
-            // Conflicting files (during a merge/rebase)
-            val conflictingFiles = status.conflicting.size
-            if (conflictingFiles > 0) {
-                println("  Conflicts: $conflictingFiles")
-                status.conflicting.forEach { println("    - Conflict: $it") }
-            } else {
-                println("  Conflicts: None")
-            }
-
             // Check if clean
             if (status.isClean) {
                 println("  Repository is clean (no untracked, unstaged, or staged changes).")
+            } else {
+                // Untracked files and folders
+                val untrackedFiles = status.untracked.size
+                val untrackedFolders = status.untrackedFolders.size
+                if (untrackedFiles > 0 || untrackedFolders > 0) {
+                    println("  Untracked: $untrackedFiles files, $untrackedFolders folders")
+                    status.untracked.forEach { println("    - Untracked: $it") }
+                    status.untrackedFolders.forEach { println("    - Untracked Folder: $it") }
+                } else {
+                    println("  Untracked: 0")
+                }
+
+                // Unstaged changes (modified, missing/deleted)
+                val modifiedFiles = status.modified.size
+                val missingFiles = status.missing.size
+                if (modifiedFiles > 0 || missingFiles > 0) {
+                    println("  Unstaged Changes:")
+                    println("    Modified: $modifiedFiles")
+                    status.modified.forEach { println("      - Modified: $it") }
+                    println("    Deleted (Missing): $missingFiles")
+                    status.missing.forEach { println("      - Deleted: $it") }
+                } else {
+                    println("  Unstaged Changes: None")
+                }
+
+                // Staged changes (added, changed, removed)
+                val addedFiles = status.added.size
+                val changedFiles = status.changed.size // Modified files that have been staged
+                val removedFiles = status.removed.size // Deleted files that have been staged
+                if (addedFiles > 0 || changedFiles > 0 || removedFiles > 0) {
+                    println("  Staged Changes:")
+                    println("    Added: $addedFiles")
+                    status.added.forEach { println("      - Added: $it") }
+                    println("    Modified (Staged): $changedFiles")
+                    status.changed.forEach { println("      - Modified (Staged): $it") }
+                    println("    Deleted (Staged): $removedFiles")
+                    status.removed.forEach { println("      - Deleted (Staged): $it") }
+                } else {
+                    println("  Staged Changes: None")
+                }
+
+                // Conflicting files (during a merge/rebase)
+                val conflictingFiles = status.conflicting.size
+                if (conflictingFiles > 0) {
+                    println("  Conflicts: $conflictingFiles")
+                    status.conflicting.forEach { println("    - Conflict: $it") }
+                } else {
+                    println("  Conflicts: None")
+                }
             }
 
-//            // --- Ahead/Behind Status ---
-//            // To get ahead/behind, we need to fetch and then compare
-//            // Note: This part can be slow if done for many repos, as it involves network operations.
-//            // For a high-level overview, you might skip fetching unless explicitly needed.
-//            println("  Checking ahead/behind status (requires network fetch)...")
-//            try {
-//                // Fetch from the remote to ensure local tracking branches are up-to-date
-//                git.fetch().setRemote("origin").call()
-//
-//                val localBranch = repository.branch // e.g., "main" or "master"
-//                // Corrected: Use findRef() instead of ref()
-//                val trackingBranch = repository.findRef("refs/remotes/origin/$localBranch")
-//
-//                if (trackingBranch != null) {
-//                    val localCommit = repository.parseCommit(repository.resolve("HEAD"))
-//                    val remoteCommit = repository.parseCommit(trackingBranch.objectId)
-//
-//                    val walk = RevWalk(repository)
-//                    // Corrected: Call mergeBase as a static method of RevWalk
-//                    val commonAncestor = walk.parseCommit(RevWalk.mergeBase(walk, localCommit, remoteCommit))
-//
-//                    var aheadCount = 0
-//                    walk.reset() // Reset walk for counting ahead commits
-//                    walk.markStart(localCommit)
-//                    walk.markUninteresting(commonAncestor)
-//                    for (commit in walk) {
-//                        aheadCount++
-//                    }
-//
-//                    var behindCount = 0
-//                    walk.reset() // Reset walk for counting behind commits
-//                    walk.markStart(remoteCommit)
-//                    walk.markUninteresting(commonAncestor)
-//                    for (commit in walk) {
-//                        behindCount++
-//                    }
-//                    walk.close() // Close the RevWalk
-//
-//                    println("  Ahead of origin/$localBranch: $aheadCount commits")
-//                    println("  Behind origin/$localBranch: $behindCount commits")
-//                } else {
-//                    println("  No tracking branch found for 'origin/$localBranch'. Cannot determine ahead/behind status.")
-//                }
-//            } catch (e: Exception) {
-//                logger.warn("  Could not fetch or determine ahead/behind status for ${repoDir.name}: ${e.message}")
-//                println("  Could not determine ahead/behind status (error during fetch or comparison).")
-//            }
+            val remotes = RemoteConfig.getAllRemoteConfigs(repository.config)
+            if (remotes.isNotEmpty()) {
+                println("  ${remotes.size} remote(s) found:")
+                remotes.forEach { remote ->
+                    println("    Remote: ${remote.name}, URL: ${remote.urIs}")
+                }
+            } else {
+                println("  No remotes configured")
+            }
 
         } catch (e: IOException) {
             logger.error("Error opening Git repository at ${repoDir.absolutePath}: ${e.message}")
