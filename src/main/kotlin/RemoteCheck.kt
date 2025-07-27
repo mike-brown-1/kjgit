@@ -4,7 +4,11 @@ import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.lib.BranchTrackingStatus
 import org.eclipse.jgit.lib.Repository
 import org.eclipse.jgit.storage.file.FileRepositoryBuilder
+import org.eclipse.jgit.transport.SshSessionFactory
+import org.eclipse.jgit.transport.sshd.SshdSessionFactoryBuilder
+import org.eclipse.jgit.util.FS
 import java.io.File
+
 
 fun checkRepositoryStatus(repositoryPath: String, fetchFromRemote: Boolean = false) {
     try {
@@ -20,11 +24,19 @@ fun checkRepositoryStatus(repositoryPath: String, fetchFromRemote: Boolean = fal
         // Fetch latest information from remote if requested
         if (fetchFromRemote) {
             println("Fetching latest information from remote...")
+            val sshSessionFactory: SshSessionFactory? = SshdSessionFactoryBuilder()
+                .setPreferredAuthentications("publickey")
+                .setHomeDirectory(FS.DETECTED.userHome())
+                .setSshDirectory(File(FS.DETECTED.userHome(), ".ssh"))
+                .build(null)
+
+            SshSessionFactory.setInstance(sshSessionFactory)
             try {
                 git.fetch().call()
                 println("Fetch completed successfully")
             } catch (e: Exception) {
                 println("Warning: Failed to fetch from remote: ${e.message}")
+                e.printStackTrace()
                 println("Proceeding with local tracking information...")
             }
         } else {
@@ -91,5 +103,5 @@ fun main() {
 
     // With fetch (slower, gets latest remote info)
     // Uncomment the line below to test with fetch
-    // checkRepositoryStatus(repositoryPath, fetchFromRemote = true)
+     checkRepositoryStatus(repositoryPath, fetchFromRemote = true)
 }
