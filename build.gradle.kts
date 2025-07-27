@@ -18,8 +18,10 @@ repositories {
 
 dependencies {
     // JGit dependency for Git operations latest: 7.3.0.202506031305-r
-    implementation("org.eclipse.jgit:org.eclipse.jgit:6.10.0.202406032230-r")
-    implementation("org.eclipse.jgit:org.eclipse.jgit.ssh.apache:6.10.0.202406032230-r")
+    implementation("org.eclipse.jgit:org.eclipse.jgit:7.3.0.202506031305-r")
+    implementation("org.eclipse.jgit:org.eclipse.jgit.ssh.apache:7.3.0.202506031305-r")
+//    implementation("org.eclipse.jgit:org.eclipse.jgit:6.10.0.202406032230-r")
+//    implementation("org.eclipse.jgit:org.eclipse.jgit.ssh.apache:6.10.0.202406032230-r")
 
     // Logging dependency (optional, but good practice for JGit's verbose logging)
     // JGit uses SLF4J, so we'll provide a simple implementation like Logback Classic
